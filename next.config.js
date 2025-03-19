@@ -13,8 +13,9 @@ const nextConfig = {
       },
     ],
   },
-  basePath: '/conspiracy', // Replace with your repository name
-  assetPrefix: '/conspiracy/', // Replace with your repository name
+  basePath: process.env.NODE_ENV === 'production' ? '/conspiracy' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/conspiracy/' : '',
+  trailingSlash: true,
 };
 
 module.exports = nextConfig; 
