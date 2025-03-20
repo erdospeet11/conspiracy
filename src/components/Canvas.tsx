@@ -150,8 +150,8 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     const canvas = fabricRef.current;
 
     // Add event listeners for object movement and scaling
-    canvas.on('object:moving', (e: fabric.IEvent) => {
-      const obj = e.target;
+    canvas.on('object:moving', (_e: fabric.IEvent) => {
+      const obj = _e.target;
       if (!canvas || !obj || !canvas.width || !canvas.height) return;
       
       // Get object boundaries
@@ -173,8 +173,8 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
       canvas.renderAll();
     });
 
-    canvas.on('object:scaling', (e: fabric.IEvent) => {
-      const obj = e.target;
+    canvas.on('object:scaling', (_e: fabric.IEvent) => {
+      const obj = _e.target;
       if (!canvas || !obj || !canvas.width || !canvas.height) return;
       
       // Get object boundaries
@@ -202,7 +202,7 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
       canvas.renderAll();
     });
 
-    canvas.on('object:rotating', (e: fabric.IEvent) => {
+    canvas.on('object:rotating', (_e: fabric.IEvent) => {
       // Update connection lines
       updateConnectionLines();
       canvas.renderAll();
@@ -232,7 +232,7 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
       fabricRef.current?.dispose();
       fabricRef.current = null;
     };
-  }, []);
+  }, [updateConnectionLines]);
 
   // Separate effect for connection mode
   useEffect(() => {
@@ -264,26 +264,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
           }
         );
 
-        // Add event listeners to both objects to update the line
-        const updateLine = () => {
-          const newFromCenter = selectedObject.getCenterPoint();
-          const newToCenter = selected.getCenterPoint();
-          line.set({
-            x1: newFromCenter.x,
-            y1: newFromCenter.y,
-            x2: newToCenter.x,
-            y2: newToCenter.y,
-          });
-          canvas.renderAll();
-        };
-
-        selectedObject.on('moving', updateLine);
-        selectedObject.on('scaling', updateLine);
-        selectedObject.on('rotating', updateLine);
-        selected.on('moving', updateLine);
-        selected.on('scaling', updateLine);
-        selected.on('rotating', updateLine);
-
         canvas.add(line);
         setConnections(prev => [...prev, { from: selectedObject, to: selected, line }]);
         
@@ -301,7 +281,7 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     return () => {
       canvas.off('selection:created', handleSelection);
     };
-  }, [isConnectionMode, selectedObject]);
+  }, [isConnectionMode, selectedObject, endConnectionMode]);
 
   const updateConnectionLines = () => {
     if (!fabricRef.current) return;
