@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, forwardRef, useImperativeHandle, useState } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react';
 import { fabric } from 'fabric';
 
 export interface CanvasRef {
@@ -18,7 +18,25 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
   const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
   const [connections, setConnections] = useState<Array<{ from: fabric.Object; to: fabric.Object; line: fabric.Line }>>([]);
 
-  const addRectangle = () => {
+  const updateConnectionLines = useCallback(() => {
+    if (!fabricRef.current) return;
+
+    connections.forEach(({ from, to, line }) => {
+      const fromCenter = from.getCenterPoint();
+      const toCenter = to.getCenterPoint();
+
+      line.set({
+        x1: fromCenter.x,
+        y1: fromCenter.y,
+        x2: toCenter.x,
+        y2: toCenter.y,
+      });
+    });
+
+    fabricRef.current.renderAll();
+  }, [connections]);
+
+  const addRectangle = useCallback(() => {
     if (!fabricRef.current) {
       console.error('Canvas not initialized');
       return;
@@ -32,7 +50,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     }
 
     try {
-      // Create a rectangle
       const rectangle = new fabric.Rect({
         left: rect.width / 2 - 50,
         top: rect.height / 2 - 50,
@@ -52,16 +69,15 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
         lockScalingY: false,
       });
 
-      // Add the rectangle to the canvas
       canvas.add(rectangle);
       canvas.setActiveObject(rectangle);
       canvas.renderAll();
     } catch (error) {
       console.error('Error adding rectangle:', error);
     }
-  };
+  }, []);
 
-  const addText = () => {
+  const addText = useCallback(() => {
     if (!fabricRef.current) {
       console.error('Canvas not initialized');
       return;
@@ -75,7 +91,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     }
 
     try {
-      // Create a textbox
       const textbox = new fabric.Textbox('Double click to edit', {
         left: rect.width / 2 - 100,
         top: rect.height / 2 - 25,
@@ -97,12 +112,10 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
         editable: true,
       });
 
-      // Add the textbox to the canvas
       canvas.add(textbox);
       canvas.setActiveObject(textbox);
       canvas.renderAll();
 
-      // Enable text editing on double click
       textbox.on('mousedblclick', () => {
         textbox.enterEditing();
         textbox.selectAll();
@@ -111,27 +124,27 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     } catch (error) {
       console.error('Error adding text:', error);
     }
-  };
+  }, []);
 
-  const startConnectionMode = () => {
+  const startConnectionMode = useCallback(() => {
     setIsConnectionMode(true);
-  };
+  }, []);
 
-  const endConnectionMode = () => {
+  const endConnectionMode = useCallback(() => {
     setIsConnectionMode(false);
     if (selectedObject) {
       selectedObject.set('stroke', '#312e81');
       fabricRef.current?.renderAll();
     }
     setSelectedObject(null);
-  };
+  }, [selectedObject]);
 
   useImperativeHandle(ref, () => ({
     addRectangle,
     addText,
     startConnectionMode,
     isConnectionMode
-  }));
+  }), [addRectangle, addText, startConnectionMode, isConnectionMode]);
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -150,14 +163,12 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     const canvas = fabricRef.current;
 
     // Add event listeners for object movement and scaling
-    canvas.on('object:moving', (_e: fabric.IEvent) => {
+    const handleObjectMoving = (_e: fabric.IEvent) => {
       const obj = _e.target;
       if (!canvas || !obj || !canvas.width || !canvas.height) return;
       
-      // Get object boundaries
       const objBounds = obj.getBoundingRect();
       
-      // Prevent moving outside canvas
       if (objBounds.left < 0) obj.left = 0;
       if (objBounds.top < 0) obj.top = 0;
       if (objBounds.left + objBounds.width > canvas.width) {
@@ -167,52 +178,53 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
         obj.top = canvas.height - objBounds.height;
       }
 
-      // Update connection lines
       updateConnectionLines();
-      
       canvas.renderAll();
-    });
+    };
 
-    canvas.on('object:scaling', (_e: fabric.IEvent) => {
+    const handleObjectScaling = (_e: fabric.IEvent) => {
       const obj = _e.target;
       if (!canvas || !obj || !canvas.width || !canvas.height) return;
       
-      // Get object boundaries
       const objBounds = obj.getBoundingRect();
       
-      // Prevent scaling outside canvas
       if (objBounds.left < 0) {
-        obj.scaleX = (obj.left + obj.width * obj.scaleX) / obj.width;
-        obj.left = 0;
+        const rect = obj as fabric.Rect;
+        rect.scaleX = ((rect.left || 0) + (rect.width || 0) * (rect.scaleX || 1)) / (rect.width || 1);
+        rect.left = 0;
       }
       if (objBounds.top < 0) {
-        obj.scaleY = (obj.top + obj.height * obj.scaleY) / obj.height;
-        obj.top = 0;
+        const rect = obj as fabric.Rect;
+        rect.scaleY = ((rect.top || 0) + (rect.height || 0) * (rect.scaleY || 1)) / (rect.height || 1);
+        rect.top = 0;
       }
       if (objBounds.left + objBounds.width > canvas.width) {
-        obj.scaleX = (canvas.width - obj.left) / obj.width;
+        const rect = obj as fabric.Rect;
+        rect.scaleX = (canvas.width - (rect.left || 0)) / (rect.width || 1);
       }
       if (objBounds.top + objBounds.height > canvas.height) {
-        obj.scaleY = (canvas.height - obj.top) / obj.height;
+        const rect = obj as fabric.Rect;
+        rect.scaleY = (canvas.height - (rect.top || 0)) / (rect.height || 1);
       }
 
-      // Update connection lines
       updateConnectionLines();
-      
       canvas.renderAll();
-    });
+    };
 
-    canvas.on('object:rotating', (_e: fabric.IEvent) => {
-      // Update connection lines
+    const handleObjectRotating = () => {
       updateConnectionLines();
       canvas.renderAll();
-    });
+    };
 
-    // Add event listener for when object modification is complete
-    canvas.on('object:modified', () => {
+    const handleObjectModified = () => {
       updateConnectionLines();
       canvas.renderAll();
-    });
+    };
+
+    canvas.on('object:moving', handleObjectMoving);
+    canvas.on('object:scaling', handleObjectScaling);
+    canvas.on('object:rotating', handleObjectRotating);
+    canvas.on('object:modified', handleObjectModified);
 
     // Handle window resize
     const handleResize = () => {
@@ -229,30 +241,49 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      fabricRef.current?.dispose();
+      canvas.off('object:moving', handleObjectMoving);
+      canvas.off('object:scaling', handleObjectScaling);
+      canvas.off('object:rotating', handleObjectRotating);
+      canvas.off('object:modified', handleObjectModified);
+      canvas.dispose();
       fabricRef.current = null;
     };
   }, [updateConnectionLines]);
 
-  // Separate effect for connection mode
+  // Connection mode effect
   useEffect(() => {
     if (!fabricRef.current) return;
 
     const canvas = fabricRef.current;
-    const handleSelection = (e: fabric.IEvent) => {
+    
+    // Handle object click for connection mode
+    const handleObjectSelect = (e: fabric.IEvent) => {
       if (!isConnectionMode) return;
-      
-      const selected = e.selected?.[0];
-      if (!selected) return;
 
+      const target = e.target;
+      if (!target) return;
+      
+      console.log('Object selected for connection:', target);
+
+      // Prevent default selection behavior
+      e.e.preventDefault();
+      e.e.stopPropagation();
+      
       if (!selectedObject) {
-        setSelectedObject(selected);
-        selected.set('stroke', '#ef4444');
+        // First selection
+        console.log('First object selected');
+        setSelectedObject(target);
+        target.set('stroke', '#ef4444');
         canvas.renderAll();
-      } else {
-        // Create connection line
+      } else if (target !== selectedObject) {
+        // Second selection - create connection
+        console.log('Second object selected, creating connection');
+        target.set('stroke', '#ef4444');
+        canvas.renderAll();
+        
+        // Create line between objects
         const fromCenter = selectedObject.getCenterPoint();
-        const toCenter = selected.getCenterPoint();
+        const toCenter = target.getCenterPoint();
         
         const line = new fabric.Line(
           [fromCenter.x, fromCenter.y, toCenter.x, toCenter.y],
@@ -264,44 +295,35 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
           }
         );
 
+        console.log('Adding connection line to canvas');
         canvas.add(line);
-        setConnections(prev => [...prev, { from: selectedObject, to: selected, line }]);
+        setConnections(prev => [...prev, { from: selectedObject, to: target, line }]);
         
-        // Reset selection and end connection mode
-        selectedObject.set('stroke', '#312e81');
-        selected.set('stroke', '#312e81');
-        setSelectedObject(null);
-        endConnectionMode();
-        canvas.renderAll();
+        // Reset selection styles after a short delay to make it visible
+        setTimeout(() => {
+          if (selectedObject) selectedObject.set('stroke', '#312e81');
+          target.set('stroke', '#312e81');
+          
+          // End connection mode
+          setSelectedObject(null);
+          setIsConnectionMode(false);
+          canvas.renderAll();
+          console.log('Connection completed, exiting connection mode');
+        }, 300);
       }
     };
 
-    canvas.on('selection:created', handleSelection);
+    if (isConnectionMode) {
+      console.log('Entering connection mode');
+      // Add object select event listener
+      canvas.on('object:selected', handleObjectSelect);
+    }
 
     return () => {
-      canvas.off('selection:created', handleSelection);
+      // Remove event listener when connection mode changes
+      canvas.off('object:selected', handleObjectSelect);
     };
-  }, [isConnectionMode, selectedObject, endConnectionMode]);
-
-  const updateConnectionLines = () => {
-    if (!fabricRef.current) return;
-
-    connections.forEach(({ from, to, line }) => {
-      // Get the center points of both objects
-      const fromCenter = from.getCenterPoint();
-      const toCenter = to.getCenterPoint();
-
-      // Update line coordinates
-      line.set({
-        x1: fromCenter.x,
-        y1: fromCenter.y,
-        x2: toCenter.x,
-        y2: toCenter.y,
-      });
-    });
-
-    fabricRef.current.renderAll();
-  };
+  }, [isConnectionMode, selectedObject]);
 
   return (
     <div 
