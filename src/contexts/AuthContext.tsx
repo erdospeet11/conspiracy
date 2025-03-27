@@ -23,12 +23,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   const signIn = async (email: string, password: string) => {
-    // TODO: Implement actual sign in
     setUser({ id: '1', email });
   };
 
   const signUp = async (email: string, password: string) => {
-    // TODO: Implement actual sign up
     setUser({ id: '1', email });
   };
 
@@ -37,7 +35,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    // TODO: Implement actual Google sign in
     setUser({ 
       id: '2', 
       email: 'user@example.com',

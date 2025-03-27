@@ -152,7 +152,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
 
-    // Initialize Fabric canvas
     fabricRef.current = new fabric.Canvas(canvasRef.current, {
       width: rect.width,
       height: rect.height,
@@ -162,7 +161,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
 
     const canvas = fabricRef.current;
 
-    // Add event listeners for object movement and scaling
     const handleObjectMoving = (_e: fabric.IEvent) => {
       const obj = _e.target;
       if (!canvas || !obj || !canvas.width || !canvas.height) return;
@@ -226,7 +224,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     canvas.on('object:rotating', handleObjectRotating);
     canvas.on('object:modified', handleObjectModified);
 
-    // Handle window resize
     const handleResize = () => {
       if (fabricRef.current && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
@@ -238,7 +235,6 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
 
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
       canvas.off('object:moving', handleObjectMoving);
@@ -250,13 +246,11 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
     };
   }, [updateConnectionLines]);
 
-  // Connection mode effect
   useEffect(() => {
     if (!fabricRef.current) return;
 
     const canvas = fabricRef.current;
     
-    // Handle object click for connection mode
     const handleObjectSelect = (e: fabric.IEvent) => {
       if (!isConnectionMode) return;
 
@@ -265,23 +259,19 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
       
       console.log('Object selected for connection:', target);
 
-      // Prevent default selection behavior
       e.e.preventDefault();
       e.e.stopPropagation();
       
       if (!selectedObject) {
-        // First selection
         console.log('First object selected');
         setSelectedObject(target);
         target.set('stroke', '#ef4444');
         canvas.renderAll();
       } else if (target !== selectedObject) {
-        // Second selection - create connection
         console.log('Second object selected, creating connection');
         target.set('stroke', '#ef4444');
         canvas.renderAll();
         
-        // Create line between objects
         const fromCenter = selectedObject.getCenterPoint();
         const toCenter = target.getCenterPoint();
         
@@ -299,12 +289,10 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
         canvas.add(line);
         setConnections(prev => [...prev, { from: selectedObject, to: target, line }]);
         
-        // Reset selection styles after a short delay to make it visible
         setTimeout(() => {
           if (selectedObject) selectedObject.set('stroke', '#312e81');
           target.set('stroke', '#312e81');
           
-          // End connection mode
           setSelectedObject(null);
           setIsConnectionMode(false);
           canvas.renderAll();
@@ -315,12 +303,10 @@ const Canvas = forwardRef<CanvasRef>((props, ref) => {
 
     if (isConnectionMode) {
       console.log('Entering connection mode');
-      // Add object select event listener
       canvas.on('object:selected', handleObjectSelect);
     }
 
     return () => {
-      // Remove event listener when connection mode changes
       canvas.off('object:selected', handleObjectSelect);
     };
   }, [isConnectionMode, selectedObject]);

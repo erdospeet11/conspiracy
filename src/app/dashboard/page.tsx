@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBoard } from '@/contexts/BoardContext';
 import BoardCard from '@/components/BoardCard';
 
-// Mock data - replace with actual data from your backend
 const mockBoards = [
   {
     id: '1',
